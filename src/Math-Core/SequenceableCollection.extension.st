@@ -1,6 +1,11 @@
 Extension { #name : #SequenceableCollection }
 
 { #category : #'*Math-Core' }
+SequenceableCollection >> asPMVector [
+	^PMVector newFrom: self.
+]
+
+{ #category : #'*Math-Core' }
 SequenceableCollection >> equalsTo: aSequenceableCollection [
 
 "^ self = aSequenceableCollection "

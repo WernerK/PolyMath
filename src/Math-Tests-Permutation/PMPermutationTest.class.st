@@ -4,9 +4,33 @@ Class {
 	#category : #'Math-Tests-Permutation'
 }
 
+{ #category : #tests }
+PMPermutationTest >> testAdd [
+|p |
+p:=PMPermutation fromCycles: #((1 4)).
+self assert: p equals: p + 0.
+self assert: p equals: p + 4.
+self assert: p equals: p + 8.
+self assert: p equals: p - 4.
+self assert: p equals: p - 8.
+self assert: (p+1)asArray equals: #(1 3 4 2).
+self assert: p+1 equals: 1+p.
+self assert: p+1 equals: p-3.
+self assert: (p+2)asArray equals: #(2 4 1 3).
+self assert: p+2 equals: p-2.
+self assert: 2-p equals: p negated + 2.
+self assert: (p+3)asArray equals: #(3 1 2 4).
+self assert: p+3 equals: p-1.
+self assert: 3-p equals: p negated+3.
+self assert: 0-p equals: p negated.
+self assert: (0-p)asArray equals: #(4 2 1 3).
+
+
+]
+
 { #category : #'class tests' }
 PMPermutationTest >> testAllOfSize [
-	| p "i	w" |
+	| p i w |
 	"special"
 	self assert: (PMPermutation allOfSize: 0) equals: #().
 	self
@@ -44,25 +68,74 @@ self assert: i < p."
 ]
 
 { #category : #tests }
+PMPermutationTest >> testAsArray [
+|p |
+p:=(PMPermutation fromCycles: #((1 4)))asArray.
+self assert: p equals: #(4 2 3 1).
+self assert: p class ==Array.
+
+]
+
+{ #category : #tests }
 PMPermutationTest >> testAsCycles [
+|s|
+s:=PMPermutation showOneCycles .
+PMPermutation showOneCycles:true.
 	self assert: PMPermutation new asCycles isEmpty.
 	self assert: (PMPermutation identity: 1) asCycles equals: #((1)).
 	self assert: (PMPermutation identity: 3) asCycles equals: #((1)(2)(3)).
-	self assert: (PMPermutation ordering: #(3 1 4 2)) asCycles equals: #((1 3 4 2)).
 	self assert: (PMPermutation ordering: #(2 4 3 6 7 8 5 1)) asCycles equals: #((1 2 4 6 8)(3)(5 7)).
-	self assert: (PMPermutation ordering: #(5 4 2 3 1)) asCycles equals: #((1 5)(2 4 3)).
 	self assert: (PMPermutation ordering: #(1 2 5 3 4 6)) asCycles equals: #((1)(2)(3 5 4)(6)).
+PMPermutation showOneCycles:false.
+	self assert: PMPermutation new asCycles isEmpty.
+	self assert: (PMPermutation identity: 1) asCycles isEmpty.
+	self assert: (PMPermutation identity: 3) asCycles isEmpty.
+	self assert: (PMPermutation ordering: #(2 4 3 6 7 8 5 1)) asCycles equals: #((1 2 4 6 8)(5 7)).
+	self assert: (PMPermutation ordering: #(1 2 5 3 4 6)) asCycles equals: #((3 5 4)).
+PMPermutation showOneCycles:s.
+	self assert: (PMPermutation ordering: #(5 4 2 3 1)) asCycles equals: #((1 5)(2 4 3)).
+	self assert: (PMPermutation ordering: #(3 1 4 2)) asCycles equals: #((1 3 4 2)).
 
 ]
 
 { #category : #tests }
 PMPermutationTest >> testAsMatrix [
-|p|
+|p |
 p:=(PMPermutation newFrom: #(4 2 5 3 1)).
-self assert: p asMatrix * (PMPermutation identity: 5)asPMVector 
+self 
+	assert: p asMatrix * (PMPermutation identity: 5)asPMVector 
 	equals: p asPMVector.
-self assert: p inverse asMatrix * p asPMVector 
-	equals: (PMPermutation identity: 5) asPMVector .
+self
+	assert: p inverse asMatrix * p asPMVector 
+	equals: (PMPermutation identity: 5) asPMVector.
+]
+
+{ #category : #tests }
+PMPermutationTest >> testCommutate [
+|a b|
+a:=PMPermutation new.
+b:=PMPermutation ordering: #(4 5 1 3 2).
+self assert: (a commutate: b) equals:a.
+self assert: (b commutate: a) equals:a.
+a:=PMPermutation ordering: #(2 1).
+self assert: (a commutate: b)asArray equals: #(2 1 3 5 4).
+self assert: (b commutate: a)asArray equals: #(2 1 3 5 4).
+
+
+]
+
+{ #category : #tests }
+PMPermutationTest >> testConjugate [
+|a b|
+a:=PMPermutation new.
+b:=PMPermutation ordering: #(4 5 1 3 2).
+self assert: (a conjugate: b) equals:b.
+self assert: (b conjugate: a) equals:a.
+a:=PMPermutation ordering: #(2 1).
+self assert: (a conjugate: b)asArray equals: #(5 4 2 3 1).
+self assert: (b conjugate: a)asArray equals: #(1 2 5 4 3).
+
+
 ]
 
 { #category : #tests }
@@ -76,6 +149,50 @@ self assert: (PMPermutation ordering: #(5 3 2 4 1)) discriminant equals:2.
 self assert: (PMPermutation ordering: #(3 5 2 1 6 4)) discriminant equals:5.
 self assert: (PMPermutation ordering: #(4 3 1 2 6 7 5)) discriminant equals:5.
 
+]
+
+{ #category : #tests }
+PMPermutationTest >> testEqual [
+|a b|
+a:=PMPermutation new.
+self assert: a equals:(PMPermutation identity: 1).
+self assert: a equals:(a:=PMPermutation identity: 3).
+self assert: (PMPermutation identity: 3) equals:a.
+self assert: a hash equals:(a:=PMPermutation identity: 3)hash.
+a shift:3.
+self assert: (PMPermutation identity: 1) equals: a.
+a shift:1.
+self deny: a =(PMPermutation identity: 1).
+self deny: a =(PMPermutation identity: 3).
+self deny: a hash=(PMPermutation identity: 3)hash.
+a:=PMPermutation ordering:#(1 4 3 5 2 6).
+self assert: a equals: (b:=PMPermutation ordering:#(1 4 3 5 2 )).
+self assert: a hash equals: b hash.
+b:=(PMPermutation ordering: #(3 2 4 1)).
+self deny: a=b.
+self deny: a hash= b hash.
+a:=PMPermutation fromCycles:#((3 1)(2 6)).
+self deny: a =(PMPermutation identity: 6).
+self deny: a =(PMPermutation size:6 fromCycles:#((3 1))).
+self deny: a =(PMPermutation size:6 fromCycles:#((2 6))).
+self assert: a equals:(PMPermutation size:8 fromCycles:#((3 1)(2 6))).
+self assert: (PMPermutation size:8 fromCycles:#((3 1)(2 6))) equals:a.
+self assert: a asArray equals:#(3 6 1 4 5 2).
+"but you dont want the same hash value here, they are equal as Arrays, but they dont really represent the same thing generally:"
+self deny: a hash= #(3 6 1 4 5 2)hash.
+self deny: a = #(3 6 1 4 5 2).
+self deny: #(3 6 1 4 5 2)=a.
+self assert: (a extendTo: 7) equals: a.
+a:=PMPermutation identity: 5.
+self assert: a negated equals: (PMPermutation identity:4)reverse .
+"also this: (!)"
+a:=PMPermutation newFrom: #(1 4 2).
+b:=PMPermutation newFrom: 'acbd'.
+self assert: (b at:2) equals: $c.
+self assert: (a at:2) equals: 4. "!, but:"
+self assert: b equals: a.	"but afterwards:"
+self assert: (b at:2) equals: 3. "in my opinion no problem (but it would be easy to change)"
+self assert: (a at:2) equals: 3.
 ]
 
 { #category : #tests }
@@ -99,9 +216,9 @@ PMPermutationTest >> testExtendTo [
 	self assert: (PMPermutation new extendTo: 3)equals: (PMPermutation identity: 3).
 	self assert: ((PMPermutation identity: 1)extendTo: 3) equals: (PMPermutation identity: 3).
 	self assert: ((PMPermutation identity: 3)extendTo: 3) equals: (PMPermutation identity: 3).
-	self assert: ((PMPermutation ordering: #(3 1 4 2))extendTo: 4) equals: #(3 1 4 2).
-	self assert: ((PMPermutation ordering: #(3 1 4 2))extendTo: 5) equals: #(3 1 4 2 5).
-	self assert: ((PMPermutation ordering: #(3 1 4 2))extendTo: 7) equals: #(3 1 4 2 5 6 7).
+	self assert: ((PMPermutation ordering: #(3 1 4 2))extendTo: 4)asArray equals: #(3 1 4 2).
+	self assert: ((PMPermutation ordering: #(3 1 4 2))extendTo: 5)asArray equals: #(3 1 4 2 5).
+	self assert: ((PMPermutation ordering: #(3 1 4 2))extendTo: 7)asArray equals: #(3 1 4 2 5 6 7).
 
 ]
 
@@ -109,14 +226,17 @@ PMPermutationTest >> testExtendTo [
 PMPermutationTest >> testFromCycles [
 	self assert: (PMPermutation fromCycles: #()) isEmpty.
 	self assert: (PMPermutation fromCycles: #(#())) isEmpty.
-	self assert: (PMPermutation fromCycles: #(#(1))) equals: #(1).
-	self assert: (PMPermutation size: 3 fromCycles: #()) equals: #(1 2 3).
-	self assert: (PMPermutation size: 3 fromCycles: #(#())) equals: #(1 2 3).
-	self assert: (PMPermutation fromCycles: #(#(1 3 4 2))) equals: #(3 1 4 2).
-	self assert: (PMPermutation fromCycles: #(#(1 2 4 6 8) #(5 7))) equals: #(2 4 3 6 7 8 5 1).
-	self assert: (PMPermutation fromCycles: #(#(1 5) #(2 4 3))) equals: #(5 4 2 3 1).
-	self assert: (PMPermutation fromCycles: #(#(1) #(3 5 4) #(6) #(2))) equals: #(1 2 5 3 4 6).
-	self assert: (PMPermutation size: 6 fromCycles: #(#(3 5 4))) equals: #(1 2 5 3 4 6)
+	self assert: (PMPermutation fromCycles: #(#(1)))asArray equals: #(1).
+	self assert: (PMPermutation size: 3 fromCycles: #())asArray equals: #(1 2 3).
+	self assert: (PMPermutation size: 3 fromCycles: #(#()))asArray equals: #(1 2 3).
+	self assert: (PMPermutation fromCycles: #(#(1 3 4 2)))asArray equals: #(3 1 4 2).
+	self assert: (PMPermutation fromCycles: #(#(1 2 4 6 8) #(5 7)))asArray equals: #(2 4 3 6 7 8 5 1).
+	self assert: (PMPermutation fromCycles: #(#(1 5) #(2 4 3)))asArray equals: #(5 4 2 3 1).
+	self assert: (PMPermutation fromCycles: #(#(1) #(3 5 4) #(6) #(2)))asArray equals: #(1 2 5 3 4 6).
+	self assert: (PMPermutation size: 6 fromCycles: #(#(3 5 4)))asArray equals: #(1 2 5 3 4 6).
+	self should:[PMPermutation size: 6 fromCycles: #(#(3 5 4)#(3))]raise: Error.
+	self should:[PMPermutation size: 6 fromCycles: #(#(3 5 4 3))]raise: Error.
+	self should:[PMPermutation fromCycles: #(#(3 5 4 5))]raise: Error.
 ]
 
 { #category : #'class tests' }
@@ -144,9 +264,9 @@ self assert: g size equals: c size.
 PMPermutationTest >> testIdentity [
 |p c|
 p:=PMPermutation identity: 0.
-self assert: p equals: #().
+self assert: p isEmpty .
 p:=PMPermutation identity: 1.
-self assert: p equals: #(1).
+self assert: p asArray equals: #(1).
 p:=PMPermutation identity: 4.
 c:=PMPermutation ordering: #(1 3 2 4).
 self assert: (p permute: c) equals: c.
@@ -157,9 +277,9 @@ self assert: (c permute: p) equals: c.
 PMPermutationTest >> testInverse [
 |p|
 p:=PMPermutation ordering: #(2 4 3 1 5).
-self assert: (p inverse permute: p ) 
+self assert: (p inverse permute: p ) asArray
 	  equals: (1 to:5 ).
-self assert: (p permute: p inverse) 
+self assert: (p permute: p inverse) asArray
 	  equals: (1 to:5 ).
 ]
 
@@ -170,22 +290,54 @@ PMPermutationTest >> testIsCollection [
 
 ]
 
+{ #category : #tests }
+PMPermutationTest >> testNegated [
+|b|
+b:=PMPermutation identity: 6.
+self assert: b negated asArray equals: #(5 4 3 2 1 6).
+
+]
+
+{ #category : #tests }
+PMPermutationTest >> testOrder [
+| p p1 oc |
+2 timesRepeat: [ 
+	p := PMPermutation fromCycles: #(#(1 4 3) #(2 5)).
+	3 timesRepeat: [ 
+		oc := OrderedCollection new.
+		p1 := p.
+		p order timesRepeat: [ p1 := p permute: p1. 	oc add: p1 ].
+		self assert: (oc indexOf: p) equals: p order.
+		p shift: 1 ].
+	p := PMPermutation identity: 2.
+	self assert: p order equals: 1.
+	p := PMPermutation identity: 1.
+	self assert: p order equals: 1.
+	p := PMPermutation identity: 0.
+	self assert: p order equals: 1.
+	p class showOneCycles: p class showOneCycles not ]
+]
+
 { #category : #'class tests' }
 PMPermutationTest >> testOrdering [
 |p|
 self should:[PMPermutation ordering: #(2 3 3 1)]raise: Error.
+self should:[PMPermutation newFrom:#(3 6 4 3)]raise: Error.
+self should: [p:=PMPermutation newFrom: #('3' '3' 2)]raise:Error.
+p:=PMPermutation newFrom: #(1 5 3).
+self assert:p asArray equals:#(1 5 3).
 p:=PMPermutation ordering: #().
-self assert: p equals: #().
+self assert: p isEmpty.
 p:=PMPermutation ordering: #(4 3 -1.9).
-self assert: p equals: #(3 2 1).
+self assert: p asArray equals: #(3 2 1).
 p:=PMPermutation ordering: #(cc cs b).
-self assert: p equals: #(2 3 1).
+self assert: p asArray equals: #(2 3 1).
 p:=PMPermutation newFrom: #(cc cs b).
 self assert: p class equals: PMPermutation.
 self assert: p first equals: #cc.
 self assert: p third equals: #b.
 p reduce.
-self assert: p equals: #(2 3 1).
+self assert: p asArray equals: #(2 3 1).
 
 ]
 
@@ -217,6 +369,26 @@ self should: [ (PMPermutation identity: 4) permute:'aBc' ] raise: SizeMismatch .
 
 ]
 
+{ #category : #tests }
+PMPermutationTest >> testPrintAsCycles [
+|a p s st|
+a:=PMPermutation fromCycles:#((3 1)).
+p:=PMPermutation printAsCycles.
+s:=PMPermutation showOneCycles .
+st:=WriteStream on:''.
+PMPermutation printAsCycles:true.
+PMPermutation showOneCycles:true .
+a printOn: st.
+self assert: st contents equals: 'a PMPermutation((1 3) (2))'.
+st reset.
+PMPermutation printAsCycles:false.
+PMPermutation showOneCycles:s .
+a printOn: st.
+self assert: st contents equals: 'a PMPermutation(3 2 1)'.
+PMPermutation printAsCycles:p.
+PMPermutation showOneCycles:s.
+]
+
 { #category : #'class tests' }
 PMPermutationTest >> testRandomGenerator [
 |g|
@@ -238,8 +410,8 @@ p2:=PMPermutation randomPermutation: l.
 self deny: p=p2.
 self assert: p class equals: PMPermutation.
 l:=1 to: l.
-self assert: p sorted equals: l.
-self assert: p2 sorted equals: l.
+self assert: p sorted asArray equals: l.
+self assert: p2 sorted asArray equals: l.
 
 ]
 
@@ -247,22 +419,23 @@ self assert: p2 sorted equals: l.
 PMPermutationTest >> testReduce [
 |p|
 p:=PMPermutation newFrom: #(2 3 1).
-self assert: p reduce equals: #(2 3 1).
+self assert: p reduce asArray equals: #(2 3 1).
 p:=PMPermutation newFrom: #(3 5 2).
-self assert: p  equals: #(3 5 2).
+self assert: p asArray equals: #(3 5 2).
 p reduce.
-self assert: p equals: #(2 3 1).
+self assert: p asArray equals: #(2 3 1).
 p:=PMPermutation newFrom: #().
-self assert: p reduce equals: #().
+self assert: p reduce asArray equals: #().
 p:=PMPermutation newFrom: #(0.8).
-self assert: p reduce equals: #(1).
+self assert: p reduce asArray equals: #(1).
+
 ]
 
 { #category : #tests }
 PMPermutationTest >> testReversed [
 |p|
 p:=PMPermutation ordering: #(2 4 3 1 5).
-self assert: (p reversed ) 
+self assert: (p reversed asArray) 
 	  equals: #(5 1 3 4 2).
 self assert: (p class) 
 	  equals: PMPermutation .
@@ -271,30 +444,42 @@ self assert: (p class)
 { #category : #tests }
 PMPermutationTest >> testShift [
 |p|
-self assert: (p:=PMPermutation size: 4 shift: 1) equals: #(2 3 4 1).
-self assert: (p shift: 0) equals: #(2 3 4 1).
-self assert: (p shift: -1) equals: #(1 2 3 4).
-self assert: (p shift: -8) equals: #(1 2 3 4).
-self assert: (p shift: 4) equals: #(1 2 3 4).
-self assert: (p shift: 2) equals: #(3 4 1 2).
-self assert: (PMPermutation size: 5 shift: 2) equals: #(3 4 5 1 2).
+self assert: (p:=PMPermutation size: 4 shift: 1)asArray equals: #(2 3 4 1).
+self assert: (p shift: 0)asArray equals: #(2 3 4 1).
+self assert: (p shift: -1)asArray equals: #(1 2 3 4).
+self assert: (p shift: -8)asArray equals: #(1 2 3 4).
+self assert: (p shift: 4)asArray equals: #(1 2 3 4).
+self assert: (p shift: 2)asArray equals: #(3 4 1 2).
+self assert: (PMPermutation size: 5 shift: 2)asArray equals: #(3 4 5 1 2).
 self assert: (PMPermutation size: 4 shift: 3) equals: (p shift: 1).
-self assert: (PMPermutation size: 4 shift: 4) equals: #(1 2 3 4).
-self assert: (PMPermutation size: 4 shift: -1) equals: #(4 1 2 3).
-self assert: (PMPermutation size: 5 shift: -2) equals: #(4 5 1 2 3).
-self assert: (PMPermutation size: 1 shift: 1) equals: #(1).
-self assert: (PMPermutation size: 0 shift: 2) equals: #().
+self assert: (PMPermutation size: 4 shift: 4)asArray equals: #(1 2 3 4).
+self assert: (PMPermutation size: 4 shift: -1)asArray equals: #(4 1 2 3).
+self assert: (PMPermutation size: 5 shift: -2)asArray equals: #(4 5 1 2 3).
+self assert: (PMPermutation size: 1 shift: 1)asArray equals: #(1).
+self assert: (PMPermutation size: 0 shift: 2)asArray equals: #().
 p:=PMPermutation randomPermutation: 6.
 self assert: (p shift: -8) equals: (p shift:4).
+]
+
+{ #category : #tests }
+PMPermutationTest >> testShowOneCycles [
+|a s|
+a:=PMPermutation fromCycles:#((3 1)).
+s:=PMPermutation showOneCycles .
+PMPermutation showOneCycles:true.
+self assert: a asCycles equals: #((1 3)(2)).
+PMPermutation showOneCycles:false.
+self assert: a asCycles equals: #((1 3)).
+PMPermutation showOneCycles:s.
 ]
 
 { #category : #'class tests' }
 PMPermutationTest >> testSizeShift [
 |p |
 p:=PMPermutation size: 0 shift: 1.
-self assert: p equals: #().
+self assert: p asArray equals: #().
 p:=PMPermutation size: 1 shift: -1.
-self assert: p equals: #(1).
+self assert: p asArray equals: #(1).
 p:=PMPermutation size: 4 shift: -1.
 self assert: p equals: (PMPermutation ordering:#(4 1 2 3)).
 p:=PMPermutation size: 4 shift: 2.

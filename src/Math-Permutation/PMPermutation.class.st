@@ -17,7 +17,9 @@ Class {
 	#superclass : #Array,
 	#type : #variable,
 	#classVars : [
-		'RandomGenerator'
+		'PrintAsCycles',
+		'RandomGenerator',
+		'ShowOneCycles'
 	],
 	#category : #'Math-Permutation'
 }
@@ -49,28 +51,33 @@ Heap's algorithm, used here, seems to be just a tiny bit faster than using #perm
 { #category : #'instance creation' }
 PMPermutation class >> fromCycles: aCollectionofCollections [
 	| length |
-	length := aCollectionofCollections flattened.
+	length := self testCycles: aCollectionofCollections.
 	length := length isEmpty 
 		ifTrue: [ 0 ]
 		ifFalse: [ length max ].
-	^ self size: length fromCycles: aCollectionofCollections
+	^ self privateSize: length fromCycles: aCollectionofCollections
 ]
 
 { #category : #accessing }
-PMPermutation class >> generator:arrayOfPermutations [
-|f max generators|
-max:=(arrayOfPermutations collect:[:g|g size])max.
-generators:=arrayOfPermutations collect:[:g| g extendTo: max].
-f:=PMFixpoint 
-  block: [ :s| |aSet|
-				aSet:=Set newFrom: s.
-				s do:[:p|s do:[:q|
-						aSet add:(p permute:q)]].
-				aSet]
-  value: generators.
-f verbose:false.
-^f evaluate asArray.
-
+PMPermutation class >> generator: arrayOfPermutations [
+	| f max generators |
+	arrayOfPermutations isCollection
+		ifFalse: [ self error: 'argument of generator has to be a Collection of Permutations' ].
+	max := (arrayOfPermutations
+		collect: [ :g | 
+			(g isKindOf: PMPermutation)
+				ifFalse: [ self error: 'argument of generator has to be a Collection of Permutations' ].
+			g size ]) max.
+	generators := arrayOfPermutations collect: [ :g | g extendTo: max ].
+	f := PMFixpoint
+		block: [ :s | 
+			| aSet |
+			aSet := Set newFrom: s.
+			s do: [ :p | s do: [ :q | aSet add: (p permute: q) ] ].
+			aSet ]
+		value: generators.
+	f verbose: false.
+	^ f evaluate asArray
 ]
 
 { #category : #'instance creation' }
@@ -82,6 +89,7 @@ PMPermutation class >> identity: size [
 PMPermutation class >> newFrom: aCollection [
 "returns the unreduced form, for a reduced form use #ordering:.
 uses super withAll: since this way a primitive can be used, which is generally much faster than super newFrom:"
+self testCycles: aCollection .
 ^( super withAll:  aCollection )
 ]
 
@@ -90,6 +98,45 @@ PMPermutation class >> ordering: aCollection [
 "use #newFrom: for an unreduced Permutation! but then most things won't work before you call #reduce.
 aCollection must consist of elements that can be sorted via #<="
 ^( super withAll:  aCollection ) reduce
+]
+
+{ #category : #setting }
+PMPermutation class >> permutationSettingsOn: aBuilder [
+	<systemsettings>
+	(aBuilder group: #PMPermutation)
+		label: #PMPermutation translated;
+		description: 'essentially PrintIt settings';
+		noOrdering.
+	(aBuilder setting: #printAsCycles)
+		target: self;
+		parent: #PMPermutation;
+		label: 'printAsCycles';
+		description: 'decides whether printing should happen in cycle form'.
+	(aBuilder setting: #showOneCycles)
+		target: self;
+		parent: #PMPermutation;
+		label: 'showOneCycles';
+		description: 'decides whether 1-cycles should be shown'
+]
+
+{ #category : #setting }
+PMPermutation class >> printAsCycles [
+^PrintAsCycles ifNil: [ PrintAsCycles :=false ]
+]
+
+{ #category : #setting }
+PMPermutation class >> printAsCycles:aBoolean [
+^PrintAsCycles := aBoolean 
+]
+
+{ #category : #private }
+PMPermutation class >> privateSize: anInteger fromCycles: aCollectionofCollections [
+	| result |
+	result := self identity: anInteger.
+	aCollectionofCollections do: [ :cycle | 
+		1 to: cycle size do: [ :i | 
+			result at: (cycle at: i) put: (cycle atWrap: i + 1) ] ].
+	^ result
 ]
 
 { #category : #accessing }
@@ -102,14 +149,21 @@ PMPermutation class >> randomPermutation: size [
 ^self ordering: (self randomGenerator next:size)
 ]
 
+{ #category : #setting }
+PMPermutation class >> showOneCycles [
+^ShowOneCycles ifNil: [ ShowOneCycles :=true ]
+]
+
+{ #category : #setting }
+PMPermutation class >> showOneCycles:aBoolean [
+^ShowOneCycles := aBoolean 
+]
+
 { #category : #'instance creation' }
 PMPermutation class >> size: anInteger fromCycles: aCollectionofCollections [
-	| result |
-	result := self identity: anInteger.
-	aCollectionofCollections do: [ :cycle | 
-		1 to: cycle size do: [ :i | 
-			result at: (cycle at: i) put: (cycle atWrap: i + 1) ] ].
-	^ result
+
+	self testCycles: aCollectionofCollections .
+	^self privateSize: anInteger fromCycles:aCollectionofCollections  
 ]
 
 { #category : #'instance creation' }
@@ -133,9 +187,60 @@ block:=[:nandk||n k|
 ^block value:{anInteger . anotherInteger }
 ]
 
+{ #category : #tests }
+PMPermutation class >> testCycles:aCollectionOfCollections [
+|result|
+result:=aCollectionOfCollections flattened.
+result asSet size==result size ifFalse: [  ^ self error: 'Permutation has doubles' ].
+^result
+]
+
+{ #category : #arithmetic }
+PMPermutation >> + anInteger [
+anInteger isInteger ifFalse:[^self nonIntegerCalc ].
+^self adaptToInteger: anInteger andSend: #+.
+
+]
+
+{ #category : #arithmetic }
+PMPermutation >> - anInteger [
+|s|
+anInteger isInteger ifFalse:[^self nonIntegerCalc ].
+s:=self size.
+^self collect: [:element|(element - anInteger) nonZeroMod: s].
+
+]
+
+{ #category : #comparing }
+PMPermutation >> = anObject [ 
+^anObject class == self class 
+	and: [ self shortForm = anObject shortForm ]
+]
+
+{ #category : #adapting }
+PMPermutation >> adaptToInteger: rcvr andSend: selector [
+|s|
+"works with #+ and #-"
+s:=self size.
+^ self collect: [:element | (rcvr perform: selector with: element)nonZeroMod: s]
+
+]
+
+{ #category : #adapting }
+PMPermutation >> adaptToNumber: rcvr andSend: selector [
+self nonIntegerCalc 
+]
+
+{ #category : #converting }
+PMPermutation >> asArray [
+"returns a basic Array, not self, because it is occasionally very pactical to have an array, which eg has a more common #= method"
+^Array withAll: self
+]
+
 { #category : #converting }
 PMPermutation >> asCycles [
 	| unused start next result cycle |
+	self reduce.
 	unused := (1 to: self size) asOrderedCollection.
 	result := OrderedCollection new.
 	[ unused isEmpty ]
@@ -144,7 +249,7 @@ PMPermutation >> asCycles [
 			cycle := OrderedCollection new.
 			[ cycle add: (unused remove: next).
 			next := self at: next ] doWhileFalse: [ next = start ].
-			result add: cycle asArray ].
+			(cycle size > 1 or:[self class showOneCycles ])ifTrue: [result add: cycle asArray] ].
 	^ result asArray
 ]
 
@@ -161,8 +266,23 @@ PMPermutation >> asMatrix [
 ]
 
 { #category : #applying }
+PMPermutation >> commutate: aPermutation [
+^((self inverse permute: aPermutation inverse) permute:self)permute: aPermutation 
+]
+
+{ #category : #applying }
+PMPermutation >> conjugate: aPermutation [
+^(self permute: aPermutation) permute:self  inverse
+]
+
+{ #category : #applying }
 PMPermutation >> discriminant [
-^self size - self asCycles size
+|r s|
+s:=self class showOneCycles .
+self class showOneCycles:true.
+r:=self size - self asCycles size.
+self class showOneCycles:s.
+^r
 ]
 
 { #category : #testing }
@@ -183,6 +303,12 @@ PMPermutation >> extendTo: size [
 	^ c
 ]
 
+{ #category : #comparing }
+PMPermutation >> hash [
+^self shortForm hash bitXor: self class hash.
+
+]
+
 { #category : #applying }
 PMPermutation >> inverse [
 |c|
@@ -197,6 +323,16 @@ PMPermutation >> isCollection [
 	^ false
 ]
 
+{ #category : #arithmetic }
+PMPermutation >> negated [
+^0-self
+]
+
+{ #category : #private }
+PMPermutation >> nonIntegerCalc [
+^DomainError signal:'Only calculations with Integers work for Permutations'
+]
+
 { #category : #testing }
 PMPermutation >> odd [
 "using the number of transpositions is faster than using the number of inversions"
@@ -204,9 +340,19 @@ PMPermutation >> odd [
 ]
 
 { #category : #applying }
+PMPermutation >> order [
+|c |
+c:=self asCycles .
+c isEmpty ifTrue: [ ^1 ].
+c:=c collect: [ :a|a size ].
+^c reduce: [ :a :b|a lcm:b ]
+
+]
+
+{ #category : #applying }
 PMPermutation >> permute: aSequentialCollection [
-	| s c |
-	(s := aSequentialCollection size) < self size
+	| c |
+	aSequentialCollection size < self size
 		ifTrue: [ aSequentialCollection class==self class 
 			ifTrue: [ ^ self permute: (aSequentialCollection extendTo: self size) ] 
 			ifFalse: [ ^ SizeMismatch signal ] ].
@@ -215,18 +361,26 @@ PMPermutation >> permute: aSequentialCollection [
 	^ c
 ]
 
+{ #category : #printing }
+PMPermutation >> printElementsOn: aStream [
+	self class printAsCycles ifFalse: [ ^super printElementsOn: aStream  ].
+	aStream nextPut: $(.
+	self asCycles do: [:element | element printElementsOn: aStream] separatedBy: [aStream space].
+	aStream nextPut: $)
+]
+
 { #category : #private }
 PMPermutation >> reduce [
-"automatically used only in #withAll: so far"
+"automatically used only in #withAll: & #shortForm so far. you have to use it by hand in some other cases."
 	| sorted range |
-	(sorted := self sorted) = (range := 1 to: self size)
+	(sorted := self asArray sorted) = (range := 1 to: self size)
 		ifTrue: [ ^ self ].
-	self size = self asSet size
+	self size == self asSet size
 		ifFalse: [ ^ self error: 'Permutation has doubles' ].
 	range do: [ :n | self at: n put: (sorted indexOf: (self at: n)) ]
 ]
 
-{ #category : #converting }
+{ #category : #applying }
 PMPermutation >> reversed [
 	"copy of SequenceableCollection>>reversed, but uses class instead of species."
 	| n result src |
@@ -237,10 +391,9 @@ PMPermutation >> reversed [
 	^ result
 ]
 
-{ #category : #converting }
+{ #category : #applying }
 PMPermutation >> shift: anInteger [
-"number positive -> leftshift, negative -> rightshift.
- does _not_ return a new Permutation!"
+"number positive -> leftshift, negative -> rightshift"
 	| n c |
 	self ifEmpty: [ ^ self ].
 	n := anInteger \\ self size.
@@ -251,6 +404,12 @@ PMPermutation >> shift: anInteger [
 ]
 
 { #category : #private }
-PMPermutation >> species [
-	^ Array 
+PMPermutation >> shortForm [
+	| each |
+	self reduce.
+	^ Array new: self size streamContents: [ :stream|
+		1 to: self size do: [ :index |
+			((each:=self at: index)==index)
+				ifFalse: [ stream nextPut: each ]]]
+
 ]
